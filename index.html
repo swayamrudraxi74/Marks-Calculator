@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DATA ZONE – AI EXPO | Marks Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020b14;
+    --surface: #040f1c;
+    --panel: #071525;
+    --border: #0d2840;
+    --cyan: #00e5ff;
+    --cyan-dim: #007a8c;
+    --blue: #0077ff;
+    --green: #00ff88;
+    --red: #ff2d55;
+    --yellow: #ffd600;
+    --orange: #ff6b00;
+    --text: #c8e6f5;
+    --text-dim: #4a7a99;
+    --glow-c: 0 0 20px rgba(0,229,255,0.4), 0 0 60px rgba(0,229,255,0.1);
+    --glow-g: 0 0 20px rgba(0,255,136,0.4), 0 0 60px rgba(0,255,136,0.1);
+    --glow-r: 0 0 20px rgba(255,45,85,0.4), 0 0 60px rgba(255,45,85,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridMove 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,119,255,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0,229,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes gridMove {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(40px); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+    animation: fadeDown 0.8s ease forwards;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,229,255,0.07);
+    border: 1px solid rgba(0,229,255,0.25);
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--cyan);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--cyan);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(24px, 6vw, 42px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #ffffff 0%, var(--cyan) 50%, var(--blue) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+    text-shadow: none;
+  }
+
+  .header-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 20px 0 32px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 4px 0;
+  }
+
+  .pipe-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .pipe-node {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--cyan-dim);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .pipe-node.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    box-shadow: var(--glow-c);
+    background: rgba(0,229,255,0.05);
+  }
+
+  .pipe-arrow {
+    width: 24px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--border), var(--cyan-dim));
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .pipe-arrow::after {
+    content: '▶';
+    position: absolute;
+    right: -6px;
+    top: -7px;
+    font-size: 8px;
+    color: var(--cyan-dim);
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 24px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.6;
+  }
+
+  .panel-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ── SUBJECT ROWS ── */
+  .subjects-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .subject-row {
+    display: grid;
+    grid-template-columns: 1fr 140px 38px;
+    gap: 10px;
+    align-items: center;
+    animation: fadeIn 0.3s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  .input-wrap input {
+    width: 100%;
+    background: rgba(7,21,37,0.8);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    outline: none;
+    transition: all 0.25s;
+    -webkit-appearance: none;
+  }
+
+  .input-wrap input::placeholder { color: var(--text-dim); font-weight: 400; }
+
+  .input-wrap input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 2px rgba(0,229,255,0.1);
+    background: rgba(0,229,255,0.03);
+  }
+
+  .input-wrap input.fail-input {
+    border-color: var(--red);
+    box-shadow: 0 0 0 2px rgba(255,45,85,0.1);
+  }
+
+  .marks-input input {
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+
+  .remove-btn {
+    background: rgba(255,45,85,0.08);
+    border: 1px solid rgba(255,45,85,0.2);
+    border-radius: 8px;
+    width: 38px; height: 38px;
+    color: rgba(255,45,85,0.6);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    line-height: 1;
+  }
+
+  .remove-btn:hover, .remove-btn:active {
+    background: rgba(255,45,85,0.2);
+    border-color: var(--red);
+    color: var(--red);
+    box-shadow: var(--glow-r);
+  }
+
+  /* ── BUTTONS ── */
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 13px;
+    border-radius: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.25s;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+
+  .btn-add {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.3);
+    color: var(--cyan);
+  }
+
+  .btn-add:hover, .btn-add:active {
+    background: rgba(0,229,255,0.18);
+    box-shadow: var(--glow-c);
+    transform: translateY(-1px);
+  }
+
+  .btn-calc {
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    color: #000;
+    font-size: 13px;
+  }
+
+  .btn-calc:hover, .btn-calc:active {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,119,255,0.5);
+  }
+
+  .btn-reset {
+    padding: 13px 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.25s;
+    -webkit-tap-highlight-color: transparent;
+    flex: none;
+  }
+
+  .btn-reset:hover { border-color: var(--text-dim); color: var(--text); }
+
+  /* ── MARKS LEGEND ── */
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(7,21,37,0.5);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-range {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  /* ── RESULT ── */
+  .result-panel {
+    display: none;
+    animation: revealUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .result-panel.show { display: block; }
+
+  @keyframes revealUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .result-header {
+    text-align: center;
+    padding: 32px 20px 24px;
+  }
+
+  .result-grade-badge {
+    display: inline-block;
+    padding: 6px 20px;
+    border-radius: 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .result-icon {
+    font-size: 56px;
+    margin-bottom: 12px;
+    display: block;
+    animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .result-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(28px, 8vw, 48px);
+    font-weight: 900;
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+  }
+
+  .result-grade {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    opacity: 0.8;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .stat-box {
+    background: rgba(7,21,37,0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 12px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-bottom: 4px;
+  }
+
+  .stat-lbl {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  /* Subject breakdown */
+  .breakdown {
+    margin-top: 16px;
+  }
+
+  .breakdown-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .subject-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(7,21,37,0.5);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .subject-result-name { color: var(--text); flex: 1; }
+
+  .subject-result-bar-wrap {
+    flex: 1;
+    margin: 0 12px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .subject-result-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .subject-result-marks {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    width: 40px;
+    text-align: right;
+  }
+
+  .subject-pill {
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-left: 10px;
+    white-space: nowrap;
+  }
+
+  /* Color system */
+  .col-distinction { color: #b48dff; }
+  .col-first { color: var(--cyan); }
+  .col-pass { color: var(--green); }
+  .col-marginal { color: var(--yellow); }
+  .col-fail { color: var(--red); }
+
+  .bg-distinction { background: rgba(180,141,255,0.15); border-color: rgba(180,141,255,0.3); }
+  .bg-first { background: rgba(0,229,255,0.08); border-color: rgba(0,229,255,0.3); }
+  .bg-pass { background: rgba(0,255,136,0.08); border-color: rgba(0,255,136,0.3); }
+  .bg-marginal { background: rgba(255,214,0,0.08); border-color: rgba(255,214,0,0.3); }
+  .bg-fail { background: rgba(255,45,85,0.08); border-color: rgba(255,45,85,0.3); }
+
+  .bar-distinction { background: linear-gradient(90deg, #7c4dff, #b48dff); }
+  .bar-first { background: linear-gradient(90deg, var(--blue), var(--cyan)); }
+  .bar-pass { background: linear-gradient(90deg, #00b85a, var(--green)); }
+  .bar-marginal { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+  .bar-fail { background: linear-gradient(90deg, #c0002e, var(--red)); }
+
+  .pill-pass { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .pill-fail { background: rgba(255,45,85,0.15); color: var(--red); border: 1px solid rgba(255,45,85,0.3); }
+
+  /* Message */
+  .result-message {
+    text-align: center;
+    padding: 16px;
+    border-radius: 10px;
+    margin-top: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    padding-bottom: 20px;
+  }
+
+  .footer span { color: var(--cyan); }
+
+  /* Scanline overlay */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Corner decorations */
+  .corner-deco {
+    position: fixed;
+    width: 60px; height: 60px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.4;
+  }
+
+  .corner-deco.tl { top: 12px; left: 12px; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+  .corner-deco.tr { top: 12px; right: 12px; border-top: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+  .corner-deco.bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+  .corner-deco.br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Error shake */
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-6px); }
+    40%,80% { transform: translateX(6px); }
+  }
+
+  .shake { animation: shake 0.4s ease; }
+
+  /* Min mark note */
+  .note {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* Max marks input */
+  .max-marks-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    background: rgba(0,229,255,0.03);
+    border: 1px solid rgba(0,229,255,0.1);
+    border-radius: 10px;
+  }
+
+  .max-marks-row label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan-dim);
+    letter-spacing: 2px;
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  .max-marks-row input {
+    width: 90px;
+    background: rgba(7,21,37,0.8);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    text-align: center;
+    outline: none;
+    transition: all 0.25s;
+    -webkit-appearance: none;
+  }
+
+  .max-marks-row input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 2px rgba(0,229,255,0.1);
+  }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="corner-deco tl"></div>
+<div class="corner-deco tr"></div>
+<div class="corner-deco bl"></div>
+<div class="corner-deco br"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="badge">DATA ZONE · AI EXPO</div>
+    <h1>MARKS<br>CALCULATOR</h1>
+    <div class="header-sub">// STUDENT GRADE PREDICTOR v1.0</div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-node active" id="pn1">INPUT</div>
+    </div>
+    <div class="pipe-arrow"></div>
+    <div class="pipe-step">
+      <div class="pipe-node" id="pn2">PROCESS</div>
+    </div>
+    <div class="pipe-arrow"></div>
+    <div class="pipe-step">
+      <div class="pipe-node" id="pn3">MODEL</div>
+    </div>
+    <div class="pipe-arrow"></div>
+    <div class="pipe-step">
+      <div class="pipe-node" id="pn4">PREDICT</div>
+    </div>
+    <div class="pipe-arrow"></div>
+    <div class="pipe-step">
+      <div class="pipe-node" id="pn5">OUTPUT</div>
+    </div>
+  </div>
+
+  <!-- INPUT PANEL -->
+  <div class="panel" id="inputPanel">
+    <div class="panel-title">// ENTER SUBJECT MARKS</div>
+
+    <div class="max-marks-row">
+      <label>MAX MARKS PER SUBJECT</label>
+      <input type="number" id="maxMarks" value="100" min="1" max="1000">
+    </div>
+
+    <div class="subjects-list" id="subjectsList"></div>
+
+    <div class="btn-row" style="margin-bottom: 12px;">
+      <button class="btn btn-add" onclick="addSubject()">+ ADD SUBJECT</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-reset" onclick="resetAll()">RESET</button>
+      <button class="btn btn-calc" onclick="calculate()">CALCULATE →</button>
+    </div>
+
+    <p class="note">MIN PASSING MARK PER SUBJECT: 35% &nbsp;·&nbsp; OVERALL PASS: ≥ 50%</p>
+
+    <!-- GRADE LEGEND -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#b48dff;box-shadow:0 0 6px #b48dff;"></div>
+        <span>Distinction</span>
+        <span class="legend-range">≥75%</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--cyan);box-shadow:0 0 6px var(--cyan);"></div>
+        <span>First Class</span>
+        <span class="legend-range">≥60%</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--green);box-shadow:0 0 6px var(--green);"></div>
+        <span>Pass</span>
+        <span class="legend-range">≥50%</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--yellow);box-shadow:0 0 6px var(--yellow);"></div>
+        <span>Marginal</span>
+        <span class="legend-range">35–49%</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
+        <span>Fail</span>
+        <span class="legend-range">&lt;35%</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
+        <span>Subject Fail</span>
+        <span class="legend-range">Any &lt;35%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT PANEL -->
+  <div class="panel result-panel" id="resultPanel">
+    <div class="panel-title">// PREDICTION OUTPUT</div>
+
+    <div class="result-header">
+      <span class="result-icon" id="resultIcon"></span>
+      <div class="result-grade-badge" id="resultBadge"></div>
+      <div class="result-label" id="resultLabel"></div>
+      <div class="result-grade" id="resultGrade"></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val" id="statAvg">–</div>
+        <div class="stat-lbl">AVERAGE %</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="statTotal">–</div>
+        <div class="stat-lbl">TOTAL MARKS</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="statSubjs">–</div>
+        <div class="stat-lbl">SUBJECTS</div>
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-title">// SUBJECT BREAKDOWN</div>
+      <div id="breakdownList"></div>
+    </div>
+
+    <div class="result-message" id="resultMessage"></div>
+
+    <div class="btn-row" style="margin-top: 20px;">
+      <button class="btn btn-add" onclick="goBack()">← RECALCULATE</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    POWERED BY <span>DATA ZONE</span> · AI EXPO &nbsp;|&nbsp; AI DOES NOT WORK WITHOUT DATA
+  </div>
+</div>
+
+<script>
+  let subjects = [];
+
+  function init() {
+    subjects = [
+      { name: 'Mathematics', marks: '' },
+      { name: 'Science', marks: '' },
+      { name: 'English', marks: '' },
+    ];
+    render();
+  }
+
+  function render() {
+    const list = document.getElementById('subjectsList');
+    list.innerHTML = '';
+    subjects.forEach((s, i) => {
+      const row = document.createElement('div');
+      row.className = 'subject-row';
+      row.innerHTML = `
+        <div class="input-wrap">
+          <input type="text" placeholder="Subject ${i + 1} Name"
+            value="${s.name}"
+            oninput="subjects[${i}].name = this.value"
+          >
+        </div>
+        <div class="input-wrap marks-input">
+          <input type="number" placeholder="Marks"
+            value="${s.marks}"
+            min="0"
+            oninput="subjects[${i}].marks = this.value"
+            id="marks_${i}"
+          >
+        </div>
+        <button class="remove-btn" onclick="removeSubject(${i})" title="Remove">×</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function addSubject() {
+    subjects.push({ name: '', marks: '' });
+    render();
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('.subject-row input');
+      inputs[inputs.length - 2].focus();
+    }, 50);
+  }
+
+  function removeSubject(i) {
+    if (subjects.length <= 1) return;
+    subjects.splice(i, 1);
+    render();
+  }
+
+  function resetAll() {
+    init();
+    document.getElementById('resultPanel').classList.remove('show');
+    document.getElementById('inputPanel').style.display = '';
+    document.getElementById('maxMarks').value = 100;
+    resetPipeline();
+  }
+
+  function goBack() {
+    document.getElementById('resultPanel').classList.remove('show');
+    document.getElementById('inputPanel').style.display = '';
+    resetPipeline();
+  }
+
+  function resetPipeline() {
+    ['pn1','pn2','pn3','pn4','pn5'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+    });
+    document.getElementById('pn1').classList.add('active');
+  }
+
+  function activatePipeline(nodes) {
+    ['pn1','pn2','pn3','pn4','pn5'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+    });
+    nodes.forEach(id => document.getElementById(id).classList.add('active'));
+  }
+
+  function getGradeInfo(pct, anySubjectFail) {
+    if (anySubjectFail) {
+      return { key: 'fail', label: 'FAIL', grade: 'Subject Fail — Score ≥35% in all subjects', icon: '❌', color: 'col-fail', bg: 'bg-fail', msg: '⚠️ One or more subjects scored below 35%. You need to clear all subjects to pass.' };
+    }
+    if (pct >= 75) return { key: 'distinction', label: 'PASS', grade: '🏆 Distinction', icon: '⭐', color: 'col-distinction', bg: 'bg-distinction', msg: '🎉 Outstanding performance! You have achieved a Distinction. Keep shining!' };
+    if (pct >= 60) return { key: 'first', label: 'PASS', grade: '🥇 First Class', icon: '✅', color: 'col-first', bg: 'bg-first', msg: '🎊 Excellent! First Class result. You are on the right track!' };
+    if (pct >= 50) return { key: 'pass', label: 'PASS', grade: '✔ Second Class Pass', icon: '✅', color: 'col-pass', bg: 'bg-pass', msg: '👍 You have passed! Keep working hard to level up your grade.' };
+    if (pct >= 35) return { key: 'marginal', label: 'PASS', grade: '⚡ Marginal Pass', icon: '⚠️', color: 'col-marginal', bg: 'bg-marginal', msg: '⚠️ Marginal pass. You made it, but aim higher next time!' };
+    return { key: 'fail', label: 'FAIL', grade: '❌ Fail', icon: '❌', color: 'col-fail', bg: 'bg-fail', msg: '📚 Don\'t give up! Study more and you\'ll do better next time.' };
+  }
+
+  function getSubjectGrade(pct) {
+    if (pct >= 75) return { key: 'distinction', label: 'A+', barClass: 'bar-distinction' };
+    if (pct >= 60) return { key: 'first', label: 'A', barClass: 'bar-first' };
+    if (pct >= 50) return { key: 'pass', label: 'B', barClass: 'bar-pass' };
+    if (pct >= 35) return { key: 'marginal', label: 'C', barClass: 'bar-marginal' };
+    return { key: 'fail', label: 'F', barClass: 'bar-fail' };
+  }
+
+  function calculate() {
+    const maxMarks = parseFloat(document.getElementById('maxMarks').value) || 100;
+    let valid = true;
+    let totalMarks = 0;
+    let anySubjectFail = false;
+    let parsedSubjects = [];
+
+    // Validate
+    subjects.forEach((s, i) => {
+      const m = parseFloat(s.marks);
+      const inp = document.getElementById('marks_' + i);
+      if (isNaN(m) || m < 0 || m > maxMarks || s.marks === '') {
+        inp.classList.add('fail-input');
+        valid = false;
+      } else {
+        inp.classList.remove('fail-input');
+      }
+    });
+
+    if (!valid) {
+      const panel = document.getElementById('inputPanel');
+      panel.classList.add('shake');
+      setTimeout(() => panel.classList.remove('shake'), 400);
+      return;
+    }
+
+    subjects.forEach(s => {
+      const m = parseFloat(s.marks);
+      const pct = (m / maxMarks) * 100;
+      totalMarks += m;
+      if (pct < 35) anySubjectFail = true;
+      parsedSubjects.push({ name: s.name || 'Subject', marks: m, pct, maxMarks });
+    });
+
+    const avgPct = (totalMarks / (subjects.length * maxMarks)) * 100;
+    const info = getGradeInfo(avgPct, anySubjectFail);
+
+    // Animate pipeline
+    activatePipeline(['pn1']);
+    setTimeout(() => activatePipeline(['pn1','pn2']), 200);
+    setTimeout(() => activatePipeline(['pn1','pn2','pn3']), 400);
+    setTimeout(() => activatePipeline(['pn1','pn2','pn3','pn4']), 600);
+    setTimeout(() => activatePipeline(['pn1','pn2','pn3','pn4','pn5']), 800);
+
+    setTimeout(() => {
+      showResult(info, avgPct, totalMarks, parsedSubjects, maxMarks);
+    }, 1000);
+  }
+
+  function showResult(info, avgPct, totalMarks, parsedSubjects, maxMarks) {
+    document.getElementById('inputPanel').style.display = 'none';
+
+    // Fill result
+    document.getElementById('resultIcon').textContent = info.icon;
+    document.getElementById('resultLabel').textContent = info.label;
+    document.getElementById('resultLabel').className = 'result-label ' + info.color;
+    document.getElementById('resultGrade').textContent = info.grade;
+
+    const badge = document.getElementById('resultBadge');
+    badge.textContent = info.grade.replace(/[^a-zA-Z\s]/g,'').trim().toUpperCase();
+    badge.className = 'result-grade-badge ' + info.bg + ' ' + info.color;
+
+    document.getElementById('statAvg').textContent = avgPct.toFixed(1) + '%';
+    document.getElementById('statAvg').className = 'stat-val ' + info.color;
+    document.getElementById('statTotal').textContent = totalMarks;
+    document.getElementById('statSubjs').textContent = parsedSubjects.length;
+
+    // Breakdown
+    const bl = document.getElementById('breakdownList');
+    bl.innerHTML = '';
+    parsedSubjects.forEach(s => {
+      const sg = getSubjectGrade(s.pct);
+      const passed = s.pct >= 35;
+      const div = document.createElement('div');
+      div.className = 'subject-result';
+      div.innerHTML = `
+        <span class="subject-result-name">${s.name}</span>
+        <div class="subject-result-bar-wrap">
+          <div class="subject-result-bar ${sg.barClass}" id="bar_${s.name.replace(/\s/g,'_')}" style="width:0%"></div>
+        </div>
+        <span class="subject-result-marks ${passed ? 'col-pass' : 'col-fail'}">${s.marks}</span>
+        <span class="subject-pill ${passed ? 'pill-pass' : 'pill-fail'}">${sg.label}</span>
+      `;
+      bl.appendChild(div);
+    });
+
+    // Message
+    const msg = document.getElementById('resultMessage');
+    msg.textContent = info.msg;
+    msg.className = 'result-message ' + info.bg;
+
+    const rp = document.getElementById('resultPanel');
+    rp.classList.add('show');
+
+    // Animate bars
+    setTimeout(() => {
+      parsedSubjects.forEach(s => {
+        const bar = document.getElementById('bar_' + s.name.replace(/\s/g,'_'));
+        if (bar) bar.style.width = Math.min(s.pct, 100) + '%';
+      });
+    }, 300);
+
+    rp.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -141,6 +141,12 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     padding: 4px 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .pipeline::-webkit-scrollbar {
+    display: none; 
   }
 
   .pipe-step {
@@ -238,7 +244,7 @@
 
   .subject-row {
     display: grid;
-    grid-template-columns: 1fr 140px 38px;
+    grid-template-columns: 1fr 110px 38px;
     gap: 10px;
     align-items: center;
     animation: fadeIn 0.3s ease forwards;
@@ -249,9 +255,7 @@
     to { opacity: 1; transform: translateX(0); }
   }
 
-  .input-wrap {
-    position: relative;
-  }
+  .input-wrap { position: relative; }
 
   .input-wrap input {
     width: 100%;
@@ -404,6 +408,31 @@
     margin-left: auto;
   }
 
+  /* ── TERMINAL PANEL (NEW) ── */
+  .terminal-panel {
+    display: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--green);
+    min-height: 200px;
+  }
+
+  .term-line {
+    animation: fadeIn 0.1s ease forwards;
+    margin-bottom: 4px;
+  }
+
+  .term-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 14px;
+    background: var(--green);
+    margin-left: 4px;
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+
   /* ── RESULT ── */
   .result-panel {
     display: none;
@@ -538,7 +567,7 @@
   .subject-result-marks {
     font-family: 'Share Tech Mono', monospace;
     font-size: 14px;
-    width: 40px;
+    width: 65px;
     text-align: right;
   }
 
@@ -691,6 +720,24 @@
     border-color: var(--cyan);
     box-shadow: 0 0 0 2px rgba(0,229,255,0.1);
   }
+
+  @media (max-width: 600px) {
+    .container { padding: 16px 10px 40px; }
+    .panel { padding: 20px 14px; }
+    .subject-row { grid-template-columns: 1fr 95px 34px; gap: 8px; }
+    .input-wrap input { padding: 10px 10px; font-size: 14px; }
+    .marks-input input { font-size: 14px; }
+    .remove-btn { width: 34px; height: 34px; font-size: 16px; }
+    .btn { padding: 11px; font-size: 11px; }
+    .header h1 { font-size: 34px; }
+    .header-sub { font-size: 10px; letter-spacing: 1px; }
+    .pipeline { justify-content: flex-start; overflow-x: auto; padding-bottom: 8px; }
+    .pipe-node { font-size: 8px; padding: 6px 8px; }
+    .max-marks-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .max-marks-row input { width: 100%; }
+    .legend { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -790,6 +837,12 @@
     </div>
   </div>
 
+  <!-- TERMINAL / PROCESSING PANEL -->
+  <div class="panel terminal-panel" id="terminalPanel">
+    <div class="panel-title">// CALCULATING RESULTS...</div>
+    <div id="termScreen"></div>
+  </div>
+
   <!-- RESULT PANEL -->
   <div class="panel result-panel" id="resultPanel">
     <div class="panel-title">// PREDICTION OUTPUT</div>
@@ -836,6 +889,20 @@
 <script>
   let subjects = [];
 
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  function escapeHTML(str) {
+    return str.replace(/[&<>"']/g, function(m) {
+      return ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m];
+    });
+  }
+
   function init() {
     subjects = [
       { name: 'Mathematics', marks: '' },
@@ -854,7 +921,7 @@
       row.innerHTML = `
         <div class="input-wrap">
           <input type="text" placeholder="Subject ${i + 1} Name"
-            value="${s.name}"
+            value="${escapeHTML(s.name)}"
             oninput="subjects[${i}].name = this.value"
           >
         </div>
@@ -866,8 +933,8 @@
             id="marks_${i}"
           >
         </div>
-        <button class="remove-btn" onclick="removeSubject(${i})" title="Remove">×</button>
-      `;
+        <button class="remove-btn" aria-label="Remove subject" onclick="removeSubject(${i})" title="Remove">×</button>
+      `; 
       list.appendChild(row);
     });
   }
@@ -890,6 +957,7 @@
   function resetAll() {
     init();
     document.getElementById('resultPanel').classList.remove('show');
+    document.getElementById('terminalPanel').style.display = 'none';
     document.getElementById('inputPanel').style.display = '';
     document.getElementById('maxMarks').value = 100;
     resetPipeline();
@@ -897,6 +965,7 @@
 
   function goBack() {
     document.getElementById('resultPanel').classList.remove('show');
+    document.getElementById('terminalPanel').style.display = 'none';
     document.getElementById('inputPanel').style.display = '';
     resetPipeline();
   }
@@ -919,11 +988,12 @@
     if (anySubjectFail) {
       return { key: 'fail', label: 'FAIL', grade: 'Subject Fail — Score ≥35% in all subjects', icon: '❌', color: 'col-fail', bg: 'bg-fail', msg: '⚠️ One or more subjects scored below 35%. You need to clear all subjects to pass.' };
     }
+    if (pct < 50) {
+      return { key: 'fail', label: 'FAIL', grade: '❌ Overall Fail', icon: '❌', color: 'col-fail', bg: 'bg-fail', msg: '⚠️ Your overall average is below 50%. You need ≥50% to pass overall.' };
+    }
     if (pct >= 75) return { key: 'distinction', label: 'PASS', grade: '🏆 Distinction', icon: '⭐', color: 'col-distinction', bg: 'bg-distinction', msg: '🎉 Outstanding performance! You have achieved a Distinction. Keep shining!' };
     if (pct >= 60) return { key: 'first', label: 'PASS', grade: '🥇 First Class', icon: '✅', color: 'col-first', bg: 'bg-first', msg: '🎊 Excellent! First Class result. You are on the right track!' };
     if (pct >= 50) return { key: 'pass', label: 'PASS', grade: '✔ Second Class Pass', icon: '✅', color: 'col-pass', bg: 'bg-pass', msg: '👍 You have passed! Keep working hard to level up your grade.' };
-    if (pct >= 35) return { key: 'marginal', label: 'PASS', grade: '⚡ Marginal Pass', icon: '⚠️', color: 'col-marginal', bg: 'bg-marginal', msg: '⚠️ Marginal pass. You made it, but aim higher next time!' };
-    return { key: 'fail', label: 'FAIL', grade: '❌ Fail', icon: '❌', color: 'col-fail', bg: 'bg-fail', msg: '📚 Don\'t give up! Study more and you\'ll do better next time.' };
   }
 
   function getSubjectGrade(pct) {
@@ -934,8 +1004,14 @@
     return { key: 'fail', label: 'F', barClass: 'bar-fail' };
   }
 
-  function calculate() {
+  async function calculate() {
     const maxMarks = parseFloat(document.getElementById('maxMarks').value) || 100;
+    
+    if (maxMarks <= 0) {
+      alert("Please enter a valid Max Marks value (greater than 0).");
+      return;
+    }
+
     let valid = true;
     let totalMarks = 0;
     let anySubjectFail = false;
@@ -960,33 +1036,80 @@
       return;
     }
 
-    subjects.forEach(s => {
+    subjects.forEach((s, i) => {
       const m = parseFloat(s.marks);
       const pct = (m / maxMarks) * 100;
       totalMarks += m;
       if (pct < 35) anySubjectFail = true;
-      parsedSubjects.push({ name: s.name || 'Subject', marks: m, pct, maxMarks });
+      
+      let sName = s.name.trim() || `Subject ${i + 1}`;
+      parsedSubjects.push({ name: sName, marks: m, pct, maxMarks });
     });
 
     const avgPct = (totalMarks / (subjects.length * maxMarks)) * 100;
     const info = getGradeInfo(avgPct, anySubjectFail);
 
-    // Animate pipeline
-    activatePipeline(['pn1']);
-    setTimeout(() => activatePipeline(['pn1','pn2']), 200);
-    setTimeout(() => activatePipeline(['pn1','pn2','pn3']), 400);
-    setTimeout(() => activatePipeline(['pn1','pn2','pn3','pn4']), 600);
-    setTimeout(() => activatePipeline(['pn1','pn2','pn3','pn4','pn5']), 800);
+    // HIDE INPUT, SHOW TERMINAL
+    document.getElementById('inputPanel').style.display = 'none';
+    const term = document.getElementById('terminalPanel');
+    const screen = document.getElementById('termScreen');
+    term.style.display = 'block';
+    screen.innerHTML = '<span class="term-cursor"></span>';
 
-    setTimeout(() => {
-      showResult(info, avgPct, totalMarks, parsedSubjects, maxMarks);
-    }, 1000);
+    const addTermLine = async (text, delay) => {
+      await sleep(delay);
+      const cursor = screen.querySelector('.term-cursor');
+      if(cursor) cursor.remove();
+      
+      screen.innerHTML += `<div class="term-line"><span style="color:var(--cyan)">></span> ${text}</div><span class="term-cursor"></span>`;
+    };
+
+    // --- SLOWER, SIMPLER ANIMATION SEQUENCE ---
+    
+    activatePipeline(['pn1', 'pn2']); // PROCESS PHASE
+    await addTermLine(`Reading subject marks...`, 600); // 600ms delay to make it readable
+    
+    // Loop through and print each subject score
+    for (let i = 0; i < parsedSubjects.length; i++) {
+        let s = parsedSubjects[i];
+        await addTermLine(`${escapeHTML(s.name)}: ${s.marks} / ${maxMarks}`, 400);
+    }
+
+    activatePipeline(['pn1','pn2','pn3']); // MODEL PHASE
+    await addTermLine(`---`, 250);
+    await addTermLine(`Calculating Total Marks: ${totalMarks}`, 700);
+    await addTermLine(`Calculating Average: ${avgPct.toFixed(1)}%`, 700);
+    
+    await addTermLine(`Checking Rule 1: Are all subjects ≥ 35%?`, 800);
+    if(anySubjectFail) {
+      await addTermLine(`<span style="color:var(--red)">Failed. Found a subject below 35%.</span>`, 600);
+    } else {
+      await addTermLine(`Passed. All subjects cleared.`, 500);
+    }
+
+    activatePipeline(['pn1','pn2','pn3','pn4']); // PREDICT PHASE
+    await addTermLine(`Checking Rule 2: Is overall average ≥ 50%?`, 800);
+    if(avgPct < 50) {
+        await addTermLine(`<span style="color:var(--red)">Failed. Average is below 50%.</span>`, 700);
+    } else {
+        await addTermLine(`Passed.`, 700);
+    }
+
+    activatePipeline(['pn1','pn2','pn3','pn4','pn5']); // OUTPUT PHASE
+    
+    // Extract just the word (e.g., "Pass", "Fail", "Distinction") for the terminal
+    let plainGrade = info.grade.replace(/[^a-zA-Z\s]/g,'').trim(); 
+    await addTermLine(`Prediction Complete: Final Result is [${plainGrade.toUpperCase()}]`, 1200);
+    
+    await addTermLine(`Loading result screen...`, 600);
+    await sleep(800); // Final dramatic pause
+
+    // HIDE TERMINAL, SHOW RESULT
+    term.style.display = 'none';
+    showResult(info, avgPct, totalMarks, parsedSubjects, maxMarks);
   }
 
   function showResult(info, avgPct, totalMarks, parsedSubjects, maxMarks) {
-    document.getElementById('inputPanel').style.display = 'none';
-
-    // Fill result
     document.getElementById('resultIcon').textContent = info.icon;
     document.getElementById('resultLabel').textContent = info.label;
     document.getElementById('resultLabel').className = 'result-label ' + info.color;
@@ -998,29 +1121,28 @@
 
     document.getElementById('statAvg').textContent = avgPct.toFixed(1) + '%';
     document.getElementById('statAvg').className = 'stat-val ' + info.color;
-    document.getElementById('statTotal').textContent = totalMarks;
+    document.getElementById('statTotal').textContent = totalMarks.toFixed(0);
     document.getElementById('statSubjs').textContent = parsedSubjects.length;
 
-    // Breakdown
     const bl = document.getElementById('breakdownList');
     bl.innerHTML = '';
-    parsedSubjects.forEach(s => {
+    
+    parsedSubjects.forEach((s, index) => {
       const sg = getSubjectGrade(s.pct);
       const passed = s.pct >= 35;
       const div = document.createElement('div');
       div.className = 'subject-result';
       div.innerHTML = `
-        <span class="subject-result-name">${s.name}</span>
+        <span class="subject-result-name">${escapeHTML(s.name)}</span>
         <div class="subject-result-bar-wrap">
-          <div class="subject-result-bar ${sg.barClass}" id="bar_${s.name.replace(/\s/g,'_')}" style="width:0%"></div>
+          <div class="subject-result-bar ${sg.barClass}" id="bar_${index}" style="width:0%"></div>
         </div>
-        <span class="subject-result-marks ${passed ? 'col-pass' : 'col-fail'}">${s.marks}</span>
+        <span class="subject-result-marks ${passed ? 'col-pass' : 'col-fail'}">${s.marks} / ${maxMarks}</span>
         <span class="subject-pill ${passed ? 'pill-pass' : 'pill-fail'}">${sg.label}</span>
-      `;
+      `; 
       bl.appendChild(div);
     });
 
-    // Message
     const msg = document.getElementById('resultMessage');
     msg.textContent = info.msg;
     msg.className = 'result-message ' + info.bg;
@@ -1028,10 +1150,9 @@
     const rp = document.getElementById('resultPanel');
     rp.classList.add('show');
 
-    // Animate bars
     setTimeout(() => {
-      parsedSubjects.forEach(s => {
-        const bar = document.getElementById('bar_' + s.name.replace(/\s/g,'_'));
+      parsedSubjects.forEach((s, index) => {
+        const bar = document.getElementById('bar_' + index);
         if (bar) bar.style.width = Math.min(s.pct, 100) + '%';
       });
     }, 300);
